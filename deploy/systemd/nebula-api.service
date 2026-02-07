@@ -1,0 +1,26 @@
+[Unit]
+Description=Nebula Notes Publishing API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/nebula-notes
+EnvironmentFile=/etc/nebula-notes/api.env
+ExecStart=/usr/bin/env npm run api:start
+Restart=always
+RestartSec=5
+
+# Basic hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+# API needs write access to content and runtime state.
+ReadWritePaths=/opt/nebula-notes/public/content /opt/nebula-notes/.runtime
+
+[Install]
+WantedBy=multi-user.target
