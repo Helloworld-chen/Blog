@@ -13,6 +13,15 @@ const isAdminRoute = computed(() => route.path.startsWith("/admin"));
 const showBackButton = computed(() => !isHomeRoute.value && !isAdminRoute.value);
 const activeHomePanel = ref("");
 const homePosts = ref([]);
+const showHomeAdminShortcut = ref(false);
+
+const homeNavTarget = computed(() => {
+  if (isAdminRoute.value) {
+    // Mark this specific home visit as "from admin" so the home topbar can show a temporary "管理" shortcut.
+    return { path: "/", state: { fromAdmin: true } };
+  }
+  return "/";
+});
 
 function readSingleParam(value) {
   if (Array.isArray(value)) return String(value[0] || "");
@@ -93,6 +102,23 @@ function goBack() {
   router.push("/");
 }
 
+function syncHomeAdminShortcut() {
+  if (typeof window === "undefined") return;
+  if (!isHomeRoute.value) {
+    showHomeAdminShortcut.value = false;
+    return;
+  }
+
+  // Vue Router stores navigation state on `history.state` for the current entry.
+  // Direct visits won't have `fromAdmin`, only admin -> home via nav will.
+  const state = window.history?.state || {};
+  showHomeAdminShortcut.value = Boolean(state && state.fromAdmin);
+}
+
+function goAdminHubFromShortcut() {
+  router.push({ name: "admin" });
+}
+
 watch(
   () => route.path,
   (path) => {
@@ -100,12 +126,14 @@ watch(
     if (path === "/") {
       loadHomePanelData();
     }
+    syncHomeAdminShortcut();
   },
   { immediate: true }
 );
 
 onMounted(() => {
   window.addEventListener(POSTS_UPDATED_EVENT, loadHomePanelData);
+  syncHomeAdminShortcut();
 });
 
 onUnmounted(() => {
@@ -119,7 +147,7 @@ onUnmounted(() => {
 
   <header class="site-header">
     <div class="brand">Tom的个人博客</div>
-    <div v-if="isHomeRoute" class="home-topbar">
+    <div v-if="isHomeRoute" class="home-topbar" :class="{ 'has-admin': showHomeAdminShortcut }">
       <button
         class="topbar-btn"
         type="button"
@@ -150,6 +178,15 @@ onUnmounted(() => {
       >
         导航
       </button>
+      <button
+        v-if="showHomeAdminShortcut"
+        class="topbar-btn"
+        type="button"
+        aria-label="返回管理后台"
+        @click="goAdminHubFromShortcut"
+      >
+        管理
+      </button>
     </div>
     <div class="header-actions" :class="{ 'with-back': showBackButton }">
       <button v-if="showBackButton" class="page-back-btn" type="button" aria-label="返回上一页" @click="goBack">
@@ -167,7 +204,7 @@ onUnmounted(() => {
         导航
       </button>
       <nav id="siteNav" class="site-nav" :class="{ open: mobileNavOpen }">
-        <RouterLink to="/" @click="closeHomePanel">首页</RouterLink>
+        <RouterLink :to="homeNavTarget" @click="closeHomePanel">首页</RouterLink>
         <RouterLink to="/posts" @click="closeHomePanel">文章库</RouterLink>
         <RouterLink to="/about" @click="closeHomePanel">关于</RouterLink>
         <RouterLink v-if="showAdminLink" to="/admin" @click="closeHomePanel">管理</RouterLink>

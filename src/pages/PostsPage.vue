@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import PostGrid from "../components/PostGrid.vue";
+import BaseSelect from "../components/BaseSelect.vue";
 import { usePageMeta } from "../composables/usePageMeta.js";
 import { POSTS_UPDATED_EVENT } from "../services/events.js";
 import { getAllPosts } from "../services/postService.js";
@@ -14,6 +15,11 @@ const router = useRouter();
 const DEFAULT_SORT = "date_desc";
 const PAGE_SIZE = 9;
 const sortOptions = new Set(["date_desc", "read_asc", "read_desc"]);
+const sortSelectOptions = [
+  { value: "date_desc", label: "最新发布优先" },
+  { value: "read_asc", label: "阅读时长升序" },
+  { value: "read_desc", label: "阅读时长降序" }
+];
 
 const posts = ref([]);
 const loading = ref(true);
@@ -180,11 +186,7 @@ onUnmounted(() => {
 
       <label class="posts-sort-wrap">
         <span>排序</span>
-        <select v-model="selectedSort">
-          <option value="date_desc">最新发布优先</option>
-          <option value="read_asc">阅读时长升序</option>
-          <option value="read_desc">阅读时长降序</option>
-        </select>
+        <BaseSelect v-model="selectedSort" :options="sortSelectOptions" aria-label="文章排序方式" />
       </label>
     </div>
 

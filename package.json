@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:no-native-dialogs": "rg -n \"window\\\\.(confirm|alert|prompt)\\\\(\" src && (echo \"Native browser dialogs are disallowed (use in-app modal).\" && exit 1) || exit 0"
   },
   "dependencies": {
     "express": "^5.2.1",

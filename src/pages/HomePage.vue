@@ -140,9 +140,10 @@ onUnmounted(() => {
 <template>
   <section class="hero">
     <p class="kicker">FRONTEND BLOG DEMO</p>
-    <h1>把灵感写成结构，把内容做成体验。</h1>
+    <h1>学而不思则罔，思而不学则殆。</h1>
     <p class="hero-desc">
-      这是一个博客前端页面示例：偏内容表达的排版、可筛选文章流、以及移动端友好的卡片布局。
+      这里记录学习与思考的过程：用标签与关键词快速筛选内容，打开导航进入归档与关于页面。
+      向下滚动，从最近更新开始阅读。
     </p>
   </section>
 

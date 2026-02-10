@@ -40,6 +40,17 @@
 }
 
 * { box-sizing: border-box; }
+
+/* iOS Safari tap highlight is rectangular and ignores border-radius. */
+.btn,
+.tag,
+.topbar-btn,
+.nav-toggle,
+.page-back-btn,
+nav a,
+.home-top-dropdown a {
+  -webkit-tap-highlight-color: transparent;
+}
 body {
   margin: 0;
   font-family: "Source Serif 4", "Noto Serif SC", Georgia, serif;
@@ -585,6 +596,7 @@ nav a:hover {
 }
 
 select,
+.select-trigger,
 [role="listbox"],
 dialog,
 [data-popover] {
@@ -597,9 +609,117 @@ dialog,
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
+
+.select {
+  position: relative;
+  width: 100%;
+}
+.select-trigger {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.select-trigger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.select-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-trigger-caret {
+  flex: 0 0 auto;
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+.select-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 6px;
+  max-height: 320px;
+  overflow: auto;
+}
+.select-option {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color .16s ease, color .16s ease, transform .16s ease;
+}
+.select-option:hover,
+.select-option[data-active="true"] {
+  background: rgba(255, 255, 255, 0.42);
+  color: #1f4e7f;
+}
+.select-option[aria-selected="true"] {
+  background: rgba(76, 169, 255, 0.26);
+  color: #1f4e7f;
+}
+.select-option-check {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
 dialog::backdrop {
   background: #16161366;
   backdrop-filter: blur(2px);
+}
+
+.confirm-dialog {
+  width: min(540px, calc(100vw - 28px));
+  padding: 0;
+}
+.confirm-dialog-body {
+  padding: 16px;
+}
+.confirm-dialog-title {
+  margin: 0 0 10px;
+  font-size: 1.12rem;
+}
+.confirm-dialog-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.confirm-dialog-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.btn.danger {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(75, 18, 18, 0.55);
+  border-top-color: rgba(255, 255, 255, 0.55);
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(170, 36, 55, 0.78), rgba(232, 90, 36, 0.72));
+  box-shadow: 0 12px 24px rgba(170, 36, 55, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn.danger:hover {
+  background: linear-gradient(135deg, rgba(186, 44, 64, 0.85), rgba(243, 107, 56, 0.8));
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .tags {
@@ -660,7 +780,9 @@ dialog::backdrop {
 .tag:focus-visible,
 .topbar-btn:focus-visible,
 .home-top-dropdown a:focus-visible,
-select:focus-visible {
+.select-trigger:focus-visible,
+select:focus-visible,
+[role="listbox"]:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22), var(--glass-shadow);
 }
@@ -809,9 +931,16 @@ select:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
+  .home-topbar.has-admin {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .topbar-btn {
     padding: 7px 8px;
     font-size: 0.88rem;
+  }
+  .home-topbar.has-admin .topbar-btn {
+    padding: 6px 6px;
+    font-size: 0.82rem;
   }
   .brand {
     width: 100%;
@@ -1159,6 +1288,13 @@ select:focus-visible {
   gap: 12px;
 }
 
+.admin-hub-actions {
+  margin-top: 14px;
+}
+.admin-hub-actions .btn {
+  width: 100%;
+}
+
 .admin-entry-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1263,6 +1399,30 @@ select:focus-visible {
 
 .admin-auth-panel {
   margin-top: 16px;
+}
+
+.admin-tag-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-top: 10px;
+}
+.admin-tag-stat {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border-mid);
+  border-top-color: var(--glass-border-top);
+  border-bottom-color: var(--glass-border-bottom);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07));
+  box-shadow: var(--glass-shadow);
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.admin-hub-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .admin-auth-form {
@@ -1544,6 +1704,13 @@ select:focus-visible {
   min-height: 48px;
   width: 100%;
 }
+.posts-sort-wrap .select-trigger {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 16px;
+  min-height: 48px;
+  width: 100%;
+}
 
 .ghost-tag {
   color: var(--muted);
@@ -1678,14 +1845,37 @@ select:focus-visible {
   margin-bottom: 12px;
 }
 
+.admin-list-toolbar .select-popover {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 30px rgba(10, 16, 26, 0.14);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.admin-list-toolbar .select-option:hover,
+.admin-list-toolbar .select-option[data-active="true"] {
+  background: rgba(35, 134, 214, 0.12);
+  color: var(--ink);
+  transform: none;
+}
+.admin-list-toolbar .select-option[aria-selected="true"] {
+  background: rgba(35, 134, 214, 0.18);
+  color: var(--ink);
+}
+
 .admin-list-toolbar input,
-.admin-list-toolbar select {
+.admin-list-toolbar select,
+.admin-list-toolbar .select-trigger {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px 10px;
   font: inherit;
   background: #fff;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .quality-panel {

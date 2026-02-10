@@ -14,6 +14,8 @@ import {
   logoutAdmin,
   upsertPost
 } from "../services/postService.js";
+import BaseSelect from "../components/BaseSelect.vue";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 
 function todayString() {
   return new Date().toISOString().slice(0, 10);
@@ -63,6 +65,15 @@ const toast = reactive({
   type: "success"
 });
 
+const confirmOpen = ref(false);
+const confirmTitle = ref("");
+const confirmMessage = ref("");
+const confirmConfirmText = ref("确认");
+const confirmCancelText = ref("取消");
+const confirmDanger = ref(false);
+const confirmBusy = ref(false);
+const confirmAction = ref(null);
+
 const LOCAL_OPERATION_LOG_KEY = "nebula-admin-operation-log";
 const TOAST_DURATION_MS = 2600;
 let toastTimer = null;
@@ -86,6 +97,26 @@ const isHubView = computed(() => currentAdminView.value === "hub");
 const isListView = computed(() => currentAdminView.value === "list");
 const isNewView = computed(() => currentAdminView.value === "new");
 const tagOptions = computed(() => ["all", ...new Set(posts.value.map((post) => post.tag))]);
+const tagSelectOptions = computed(() => [
+  { value: "all", label: "全部标签" },
+  ...tagOptions.value.slice(1).map((tag) => ({ value: tag, label: tag }))
+]);
+const sortSelectOptions = [
+  { value: "date_desc", label: "最新优先" },
+  { value: "date_asc", label: "最早优先" },
+  { value: "title_asc", label: "标题 A-Z" }
+];
+const tagStats = computed(() => {
+  const counts = new Map();
+  for (const post of posts.value) {
+    const tag = String(post?.tag || "").trim();
+    if (!tag) continue;
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
+    .map(([tag, count]) => ({ tag, count }));
+});
 const displayedPosts = computed(() => {
   const keyword = normalizeText(listKeyword.value);
   const filtered = posts.value.filter((post) => {
@@ -368,28 +399,25 @@ async function removePost(slug) {
     return;
   }
 
-  const ok = window.confirm(`确认删除文章 ${slug} 吗？`);
-  if (!ok) return;
-
-  error.value = "";
-
-  try {
-    await deletePost(slug);
-    if (editingSlug.value === slug) {
-      resetForm();
+  openConfirm({
+    title: "确认删除？",
+    message: `文章 ${slug} 将被删除，此操作不可撤销。`,
+    confirmText: "删除",
+    danger: true,
+    action: async () => {
+      error.value = "";
+      await deletePost(slug);
+      if (editingSlug.value === slug) {
+        resetForm();
+      }
+      await loadPosts();
+      if (isApiMode) {
+        await refreshOperationLog();
+      }
+      showToast("文章删除成功。");
+      addOperation("删除", slug, "文章已删除");
     }
-    await loadPosts();
-    if (isApiMode) {
-      await refreshOperationLog();
-    }
-    showToast("文章删除成功。");
-    addOperation("删除", slug, "文章已删除");
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "删除失败";
-    if (isApiMode && error.value.includes("请先登录")) {
-      loggedIn.value = false;
-    }
-  }
+  });
 }
 
 async function resetLocalEdits() {
@@ -398,23 +426,59 @@ async function resetLocalEdits() {
     return;
   }
 
-  const ok = window.confirm("确认清空所有本地改动并恢复默认内容吗？");
-  if (!ok) return;
+  openConfirm({
+    title: "确认清空本地改动？",
+    message: "将清空浏览器 localStorage 中的所有本地改动，并恢复默认内容。此操作不可撤销。",
+    confirmText: "清空",
+    danger: true,
+    action: async () => {
+      resetting.value = true;
+      error.value = "";
+      try {
+        clearLocalEdits();
+        resetForm();
+        await loadPosts();
+        showToast("已清空本地改动。");
+        addOperation("重置", "-", "清空本地改动");
+      } finally {
+        resetting.value = false;
+      }
+    }
+  });
+}
 
-  resetting.value = true;
-  error.value = "";
+function openConfirm({ title, message, confirmText, cancelText = "取消", danger = false, action }) {
+  confirmTitle.value = String(title || "确认操作");
+  confirmMessage.value = String(message || "");
+  confirmConfirmText.value = String(confirmText || "确认");
+  confirmCancelText.value = String(cancelText || "取消");
+  confirmDanger.value = Boolean(danger);
+  confirmAction.value = typeof action === "function" ? action : null;
+  confirmOpen.value = true;
+}
 
-  try {
-    clearLocalEdits();
-    resetForm();
-    await loadPosts();
-    showToast("已清空本地改动。");
-    addOperation("重置", "-", "清空本地改动");
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "重置失败";
-  } finally {
-    resetting.value = false;
+async function handleConfirm() {
+  if (!confirmAction.value) {
+    confirmOpen.value = false;
+    return;
   }
+
+  confirmBusy.value = true;
+  try {
+    await confirmAction.value();
+    confirmOpen.value = false;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "操作失败";
+    error.value = msg;
+    showToast(msg, "error");
+    // Keep dialog open for explicit user action (cancel/confirm).
+  } finally {
+    confirmBusy.value = false;
+  }
+}
+
+function handleConfirmCancel() {
+  confirmOpen.value = false;
 }
 
 async function checkSessionStatus() {
@@ -472,6 +536,19 @@ async function handleLogout() {
   }
 }
 
+async function exitFromHub() {
+  // API 模式：执行退出登录并停留在登录页，方便继续登录。
+  if (isApiMode) {
+    if (loggedIn.value) {
+      await handleLogout();
+    }
+    return;
+  }
+
+  // 本地模式没有真实登录态，直接返回首页。
+  router.push("/");
+}
+
 usePageMeta(() => ({
   title: currentAdminView.value === "hub" ? "Tom的个人博客 | 后台入口" : "Tom的个人博客 | 内容管理",
   description:
@@ -512,17 +589,32 @@ onBeforeUnmount(() => {
     <p class="kicker">CONTENT ADMIN</p>
     <h1>{{ isHubView ? "后台入口" : "内容运营后台" }}</h1>
     <p class="hero-desc">
-      <span v-if="isApiMode">当前内容发布到服务器，保存后对访客可见。</span>
-      <span v-else>
-        当前改动保存到浏览器 <code>localStorage</code>，仅影响本机预览。
-        本地改动：新增/修改 {{ draftStatus.upsertCount }} 篇，删除 {{ draftStatus.deletedCount }} 篇。
-      </span>
+      <template v-if="isHubView">
+        <span>当前各标签文章数量：</span>
+        <span v-if="tagStats.length" class="admin-tag-stats" aria-label="标签文章数量统计">
+          <span v-for="item in tagStats" :key="item.tag" class="admin-tag-stat">
+            {{ item.tag }} {{ item.count }} 篇
+          </span>
+        </span>
+        <span v-else>暂无文章。</span>
+      </template>
+      <template v-else>
+        <span v-if="isApiMode">当前内容发布到服务器，保存后对访客可见。</span>
+        <span v-else>
+          当前改动保存到浏览器 <code>localStorage</code>，仅影响本机预览。
+          本地改动：新增/修改 {{ draftStatus.upsertCount }} 篇，删除 {{ draftStatus.deletedCount }} 篇。
+        </span>
+      </template>
+    </p>
+    <p v-if="isHubView && !isApiMode" class="admin-hub-note">
+      当前改动保存到浏览器 <code>localStorage</code>，仅影响本机预览。
+      本地改动：新增/修改 {{ draftStatus.upsertCount }} 篇，删除 {{ draftStatus.deletedCount }} 篇。
     </p>
     <div v-if="!isHubView" class="hero-actions">
       <RouterLink class="btn ghost" :to="{ name: 'admin' }">返回后台入口</RouterLink>
       <button
         v-if="isListView"
-        class="btn primary"
+        class="btn ghost"
         type="button"
         data-testid="admin-new-post"
         :disabled="isApiMode && !loggedIn"
@@ -612,6 +704,9 @@ onBeforeUnmount(() => {
         </RouterLink>
       </article>
     </section>
+    <div v-if="isHubView" class="admin-hub-actions">
+      <button class="btn ghost" type="button" @click="exitFromHub">退出登录</button>
+    </div>
 
     <section v-if="isListView" class="admin-layout-single">
       <article class="admin-panel">
@@ -623,15 +718,8 @@ onBeforeUnmount(() => {
             type="search"
             placeholder="按标题或 slug 过滤..."
           />
-          <select v-model="listTag">
-            <option value="all">全部标签</option>
-            <option v-for="tag in tagOptions.slice(1)" :key="tag" :value="tag">{{ tag }}</option>
-          </select>
-          <select v-model="listSort">
-            <option value="date_desc">最新优先</option>
-            <option value="date_asc">最早优先</option>
-            <option value="title_asc">标题 A-Z</option>
-          </select>
+          <BaseSelect v-model="listTag" :options="tagSelectOptions" aria-label="筛选标签" />
+          <BaseSelect v-model="listSort" :options="sortSelectOptions" aria-label="排序方式" />
         </div>
 
         <p v-if="loading" class="empty">加载中...</p>
@@ -762,4 +850,16 @@ onBeforeUnmount(() => {
     <span>{{ toast.text }}</span>
     <button type="button" aria-label="关闭提示" @click="hideToast">×</button>
   </div>
+
+  <ConfirmDialog
+    v-model:open="confirmOpen"
+    :title="confirmTitle"
+    :message="confirmMessage"
+    :confirm-text="confirmConfirmText"
+    :cancel-text="confirmCancelText"
+    :danger="confirmDanger"
+    :busy="confirmBusy"
+    @confirm="handleConfirm"
+    @cancel="handleConfirmCancel"
+  />
 </template>
