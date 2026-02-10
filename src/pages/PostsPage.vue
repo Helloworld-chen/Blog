@@ -61,8 +61,7 @@ function applyRouteQuery() {
   keyword.value = query.q || "";
   selectedTag.value = query.tag || "all";
   selectedSort.value = sortOptions.has(query.sort) ? query.sort : DEFAULT_SORT;
-  const pageFromQuery = Number.parseInt(query.page || "1", 10);
-  currentPage.value = Number.isFinite(pageFromQuery) && pageFromQuery > 0 ? pageFromQuery : 1;
+  currentPage.value = 1;
   syncingFromRoute = false;
 }
 
@@ -73,9 +72,9 @@ function syncQueryToRoute() {
   if (keyword.value.trim()) nextQuery.q = keyword.value.trim();
   if (selectedTag.value !== "all") nextQuery.tag = selectedTag.value;
   if (selectedSort.value !== DEFAULT_SORT) nextQuery.sort = selectedSort.value;
-  if (currentPage.value > 1) nextQuery.page = String(currentPage.value);
 
   const currentQuery = normalizeQueryObject(route.query);
+  delete currentQuery.page;
   const nextSerialized = JSON.stringify(nextQuery);
   const currentSerialized = JSON.stringify(currentQuery);
   if (nextSerialized === currentSerialized) return;
@@ -123,12 +122,12 @@ watch([keyword, selectedTag, selectedSort], () => {
   if (!syncingFromRoute) currentPage.value = 1;
 });
 
-watch([keyword, selectedTag, selectedSort, currentPage], () => {
+watch([keyword, selectedTag, selectedSort], () => {
   syncQueryToRoute();
 });
 
 usePageMeta(() => ({
-  title: "Nebula Notes | 文章",
+  title: "Tom的个人博客 | 文章",
   description: "按关键词、标签和排序方式浏览全部文章。"
 }));
 
@@ -214,7 +213,7 @@ onUnmounted(() => {
     />
 
     <div v-if="!loading && !error && hasMore" class="load-more-wrap">
-      <button class="btn ghost" @click="loadMore">加载更多</button>
+      <button class="btn ghost" @click="loadMore">展开更多</button>
     </div>
   </section>
 </template>

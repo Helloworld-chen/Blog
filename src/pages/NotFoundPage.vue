@@ -2,7 +2,7 @@
 import { usePageMeta } from "../composables/usePageMeta.js";
 
 usePageMeta({
-  title: "Nebula Notes | 页面不存在",
+  title: "Tom的个人博客 | 页面不存在",
   description: "你访问的页面不存在，返回首页继续阅读。"
 });
 </script>

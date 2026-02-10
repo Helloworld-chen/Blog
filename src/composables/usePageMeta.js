@@ -1,7 +1,7 @@
 import { watchEffect } from "vue";
 
-const defaultTitle = "Nebula Notes";
-const defaultDescription = "Nebula Notes 博客前端示例";
+const defaultTitle = "Tom的个人博客";
+const defaultDescription = "Tom的个人博客 博客前端示例";
 
 function getOrCreateMeta(name, attr = "name") {
   let node = document.head.querySelector(`meta[${attr}='${name}']`);

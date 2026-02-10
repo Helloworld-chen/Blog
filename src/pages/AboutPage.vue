@@ -2,17 +2,17 @@
 import { usePageMeta } from "../composables/usePageMeta.js";
 
 usePageMeta({
-  title: "Nebula Notes | 关于",
-  description: "关于 Nebula Notes：定位、内容原则、发布流程与技术实现。"
+  title: "Tom的个人博客 | 关于",
+  description: "关于 Tom的个人博客：定位、内容原则、发布流程与技术实现。"
 });
 </script>
 
 <template>
   <section class="hero mini-hero">
     <p class="kicker">ABOUT THIS SITE</p>
-    <h1>关于 Nebula Notes</h1>
+    <h1>关于 Tom的个人博客</h1>
     <p class="hero-desc">
-      Nebula Notes 是一个以内容表达为中心的博客前端示例，目标是平衡阅读体验、工程可维护性与后续 API
+      Tom的个人博客 是一个以内容表达为中心的博客前端示例，目标是平衡阅读体验、工程可维护性与后续 API
       扩展能力。
     </p>
   </section>

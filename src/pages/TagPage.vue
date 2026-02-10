@@ -49,7 +49,7 @@ const relatedTags = computed(() => {
 const latestDate = computed(() => postsInCurrentTag.value[0]?.date || "暂无");
 
 usePageMeta(() => ({
-  title: `Nebula Notes | 标签 - ${currentTag.value}`,
+  title: `Tom的个人博客 | 标签 - ${currentTag.value}`,
   description: routeKeyword.value
     ? `查看标签“${currentTag.value}”下与“${routeKeyword.value}”相关的文章。`
     : `查看标签“${currentTag.value}”下的文章。`

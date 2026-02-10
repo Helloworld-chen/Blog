@@ -25,8 +25,8 @@ const headings = computed(() => extractHeadings(post.value?.markdown || ""));
 const readingProgressPercent = computed(() => Math.round(readingProgress.value * 100));
 
 usePageMeta(() => ({
-  title: post.value ? `${post.value.title} | Nebula Notes` : "Nebula Notes | 文章详情",
-  description: post.value?.description || post.value?.excerpt || "阅读 Nebula Notes 的精选文章。"
+  title: post.value ? `${post.value.title} | Tom的个人博客` : "Tom的个人博客 | 文章详情",
+  description: post.value?.description || post.value?.excerpt || "阅读 Tom的个人博客 的精选文章。"
 }));
 
 function clamp(value, min, max) {

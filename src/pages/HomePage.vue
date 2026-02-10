@@ -36,17 +36,6 @@ const suggestions = computed(() =>
     6
   )
 );
-const popularTags = computed(() => {
-  const counts = posts.value.reduce((acc, post) => {
-    acc.set(post.tag, (acc.get(post.tag) || 0) + 1);
-    return acc;
-  }, new Map());
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([tag, count]) => ({ tag, count }));
-});
-const recentUpdates = computed(() => posts.value.slice(0, 4));
 const summary = computed(() => ({
   totalPosts: posts.value.length,
   totalTags: Math.max(0, allTags.value.length - 1),
@@ -126,7 +115,7 @@ watch([keyword, selectedTag, suggestions], () => {
 
 useHomeEasterEgg();
 usePageMeta(() => ({
-  title: "Nebula Notes | 首页",
+  title: "Tom的个人博客 | 首页",
   description: "首页提供精选文章、快速筛选和标签导览，帮助你快速进入内容。"
 }));
 
@@ -155,10 +144,6 @@ onUnmounted(() => {
     <p class="hero-desc">
       这是一个博客前端页面示例：偏内容表达的排版、可筛选文章流、以及移动端友好的卡片布局。
     </p>
-    <div class="hero-actions">
-      <RouterLink class="btn primary" to="/posts">进入文章归档</RouterLink>
-      <RouterLink class="btn ghost" to="/about">关于站点</RouterLink>
-    </div>
   </section>
 
   <section class="overview-metrics home-metrics" aria-label="首页概览">
@@ -228,24 +213,4 @@ onUnmounted(() => {
     <PostGrid v-else :posts="featuredPosts" />
   </section>
 
-  <section class="home-side-notes">
-    <article class="note-card">
-      <h2>热门标签</h2>
-      <ul>
-        <li v-for="item in popularTags" :key="item.tag">
-          <RouterLink :to="`/tags/${encodeURIComponent(item.tag)}`">{{ item.tag }}</RouterLink>
-          <span>{{ item.count }} 篇</span>
-        </li>
-      </ul>
-    </article>
-    <article class="note-card">
-      <h2>最近更新</h2>
-      <ul>
-        <li v-for="post in recentUpdates" :key="post.slug">
-          <RouterLink :to="`/post/${post.slug}`">{{ post.title }}</RouterLink>
-          <span>{{ post.date }}</span>
-        </li>
-      </ul>
-    </article>
-  </section>
 </template>

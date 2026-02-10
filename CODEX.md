@@ -1,105 +1,112 @@
-# CODEX Project Memory
+# CODEX 项目记忆
 
-This file stores stable, non-sensitive context for future sessions.
+此文件用于存储稳定、非敏感的上下文信息，供后续会话使用。
 
-## Project Identity
-- Project: `blog-sample` (Nebula Notes blog)
-- Repo: `https://github.com/Helloworld-chen/Blog.git`
-- Branch: `main`
-- Stack: `Vue 3 + Vite + Node.js API + Nginx + systemd`
+## 项目标识
+- 项目：`blog-sample`（Tom的个人博客 博客）
+- 仓库：`https://github.com/Helloworld-chen/Blog.git`
+- 分支：`main`
+- 技术栈：`Vue 3 + Vite + Node.js API + Nginx + systemd`
 
-## Owner Preferences
-- In chat, prefer **single-line executable commands**.
-- If multi-line is needed, also provide a one-line equivalent.
-- Every command should include a short purpose explanation.
+## 负责人偏好
+- 在聊天中，优先提供**单行可执行命令**。
+- 如必须多行，也要同时提供一行等价命令。
+- 每条命令都要附带简短用途说明。
+- 学习优先协作：
+  - 对实现类需求，在任何代码修改或命令执行前，先给出 `Implementation Path` 和 `Execution Plan`。
+  - 重点解释实现方式（文件位置、逻辑流程、技术选型），以便负责人可独立复现。
+  - 除非存在影响执行的歧义，否则不重复复述目标/边界。
+  - 说明路径与计划后，再执行请求的改动。
+- 文档语言偏好：
+  - 后续 `.md` 项目说明文档优先使用中文。
+  - 涉及命令、路径、环境变量时保留原始英文标识（如 `npm run dev`、`API_PORT`）。
 
-## Server Access
-- Provider: Alibaba Cloud Lightweight Server
-- Region: Hong Kong
-- Public IP: `8.217.71.211`
-- SSH: `ssh admin@8.217.71.211`
-- SSH port: `22`
+## 服务器访问
+- 提供商：阿里云轻量应用服务器
+- 地域：香港
+- 公网 IP：`8.217.71.211`
+- SSH：`ssh admin@8.217.71.211`
+- SSH 端口：`22`
 
-## Domains
-- Production: `qpqrstar.com`, `www.qpqrstar.com`
-- Staging: `staging.qpqrstar.com`
-- DNS A records expected:
+## 域名
+- 生产：`qpqrstar.com`、`www.qpqrstar.com`
+- 预发：`staging.qpqrstar.com`
+- 期望 DNS A 记录：
   - `@ -> 8.217.71.211`
   - `www -> 8.217.71.211`
   - `staging -> 8.217.71.211`
 
-## Production Environment
-- App root: `/opt/nebula-notes`
-- Static root: `/var/www/nebula-notes`
-- API env: `/etc/nebula-notes/api.env`
-- API service: `nebula-api`
-- API port (internal): `127.0.0.1:8787`
-- Basic auth file (layer 1): `/etc/nginx/.htpasswd`
-- API admin credentials (layer 2): `ADMIN_USERNAME`/`ADMIN_PASSWORD` in `/etc/nebula-notes/api.env`
+## 生产环境
+- 应用根目录：`/opt/nebula-notes`
+- 静态资源目录：`/var/www/nebula-notes`
+- API 环境变量文件：`/etc/nebula-notes/api.env`
+- API 服务名：`nebula-api`
+- API 端口（内网）：`127.0.0.1:8787`
+- 基础认证文件（第 1 层）：`/etc/nginx/.htpasswd`
+- API 管理员凭据（第 2 层）：`/etc/nebula-notes/api.env` 中的 `ADMIN_USERNAME`/`ADMIN_PASSWORD`
 
-## Staging Environment
-- App root: `/opt/nebula-notes-staging`
-- Static root: `/var/www/nebula-notes-staging`
-- API env: `/etc/nebula-notes-staging/api.env`
-- API service: `nebula-api-staging`
-- API port (internal): `127.0.0.1:8788`
-- Nginx conf: `/etc/nginx/conf.d/staging.qpqrstar.com.conf`
-- Basic auth file (layer 1): `/etc/nginx/.htpasswd-staging`
-- TLS cert name: `staging.qpqrstar.com`
+## 预发环境
+- 应用根目录：`/opt/nebula-notes-staging`
+- 静态资源目录：`/var/www/nebula-notes-staging`
+- API 环境变量文件：`/etc/nebula-notes-staging/api.env`
+- API 服务名：`nebula-api-staging`
+- API 端口（内网）：`127.0.0.1:8788`
+- Nginx 配置：`/etc/nginx/conf.d/staging.qpqrstar.com.conf`
+- 基础认证文件（第 1 层）：`/etc/nginx/.htpasswd-staging`
+- TLS 证书名：`staging.qpqrstar.com`
 
-## Local Development
-- API dev:
+## 本地开发
+- API 开发：
   - `API_PORT=8787 ADMIN_USERNAME=admin ADMIN_PASSWORD='your-strong-password' npm run api:dev`
-- Frontend dev:
+- 前端开发：
   - `VITE_POST_SOURCE=api VITE_SHOW_ADMIN_LINK=true npm run dev`
-- Local URL: `http://localhost:5173/`
+- 本地地址：`http://localhost:5173/`
 
-## Standard Deploy Commands
-- Deploy to staging (one line):
+## 标准部署命令
+- 部署到预发（单行）：
   - `cd /opt/nebula-notes-staging && git pull && npm ci && ./deploy/scripts/publish-static.sh /opt/nebula-notes-staging /var/www/nebula-notes-staging && sudo systemctl restart nebula-api-staging`
-- Deploy to production (one line):
+- 部署到生产（单行）：
   - `cd /opt/nebula-notes && git pull && npm ci && ./deploy/scripts/publish-static.sh /opt/nebula-notes /var/www/nebula-notes && sudo systemctl restart nebula-api && sudo systemctl reload nginx`
 
-## Publish Workflow (Recommended)
-1. Develop and test locally.
-2. Push code to GitHub `main`.
-3. Deploy to `staging`.
-4. Validate staging URLs and admin login.
-5. Deploy to production.
-6. Run production health checks.
+## 发布流程（推荐）
+1. 在本地开发并测试。
+2. 推送代码到 GitHub `main`。
+3. 部署到 `staging`。
+4. 验证预发 URL 与后台登录。
+5. 部署到生产。
+6. 执行生产健康检查。
 
-## Verification Commands
-- Staging:
+## 验证命令
+- 预发：
   - `curl -I https://staging.qpqrstar.com`
   - `curl -fsS https://staging.qpqrstar.com/api/health`
-  - `curl -I https://staging.qpqrstar.com/admin` (expect `401`)
-- Production:
+  - `curl -I https://staging.qpqrstar.com/admin`（预期 `401`）
+- 生产：
   - `curl -I https://qpqrstar.com`
   - `curl -I https://www.qpqrstar.com`
   - `curl -fsS https://qpqrstar.com/api/health`
 
-## Operations & Troubleshooting
-- API status/logs:
+## 运维与排障
+- API 状态/日志：
   - `sudo systemctl status nebula-api --no-pager`
   - `sudo systemctl status nebula-api-staging --no-pager`
   - `sudo journalctl -u nebula-api -f`
   - `sudo journalctl -u nebula-api-staging -f`
-- Nginx:
+- Nginx：
   - `sudo nginx -t`
   - `sudo systemctl reload nginx`
   - `sudo nginx -T | grep -n "server_name"`
-- Firewall:
+- 防火墙：
   - `sudo ufw status`
-- Show admin usernames only (no password):
+- 仅显示管理员用户名（不显示密码）：
   - `sudo grep -E '^ADMIN_USERNAME=' /etc/nebula-notes/api.env`
   - `sudo grep -E '^ADMIN_USERNAME=' /etc/nebula-notes-staging/api.env`
 
-## Credential Management Notes
-- Do not store PAT/passwords in this file.
-- If secrets were exposed in screenshots/chat, rotate immediately.
-- Layer 1 password reset:
-  - Production: `sudo htpasswd /etc/nginx/.htpasswd <user>`
-  - Staging: `sudo htpasswd /etc/nginx/.htpasswd-staging <user>`
-- Layer 2 password reset:
-  - Edit `ADMIN_PASSWORD` in env file, then restart service.
-
+## 凭据管理说明
+- 不要在本文件中存储 PAT/密码。
+- 若密钥在截图或聊天中泄露，需立即轮换。
+- 第 1 层密码重置：
+  - 生产：`sudo htpasswd /etc/nginx/.htpasswd <user>`
+  - 预发：`sudo htpasswd /etc/nginx/.htpasswd-staging <user>`
+- 第 2 层密码重置：
+  - 修改环境变量文件中的 `ADMIN_PASSWORD`，然后重启服务。

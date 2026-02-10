@@ -15,6 +15,8 @@ const routes = [
   { path: "/tags/:tag/:keyword?", name: "tag", component: TagPage },
   { path: "/about", name: "about", component: AboutPage },
   { path: "/admin", name: "admin", component: AdminPage },
+  { path: "/admin/list", name: "admin-list", component: AdminPage },
+  { path: "/admin/new", name: "admin-new", component: AdminPage },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundPage }
 ];
 

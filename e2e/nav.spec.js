@@ -14,7 +14,7 @@ test("top navigation routes to public sections and admin is hidden by default", 
 
   await headerNav.getByRole("link", { name: "关于", exact: true }).click();
   await expect(page).toHaveURL(/\/about/);
-  await expect(page.getByRole("heading", { name: "关于 Nebula Notes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "关于 Tom的个人博客" })).toBeVisible();
 
   await expect(headerNav.getByRole("link", { name: "管理", exact: true })).toHaveCount(0);
 

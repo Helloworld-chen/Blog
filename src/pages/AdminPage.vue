@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 import { usePageMeta } from "../composables/usePageMeta.js";
 import {
@@ -65,6 +66,8 @@ const toast = reactive({
 const LOCAL_OPERATION_LOG_KEY = "nebula-admin-operation-log";
 const TOAST_DURATION_MS = 2600;
 let toastTimer = null;
+const route = useRoute();
+const router = useRouter();
 
 const form = reactive(emptyForm());
 const authForm = reactive({
@@ -73,6 +76,15 @@ const authForm = reactive({
 });
 
 const isEditing = computed(() => Boolean(editingSlug.value));
+const currentAdminView = computed(() => {
+  const name = typeof route.name === "string" ? route.name : "";
+  if (name === "admin-list") return "list";
+  if (name === "admin-new") return "new";
+  return "hub";
+});
+const isHubView = computed(() => currentAdminView.value === "hub");
+const isListView = computed(() => currentAdminView.value === "list");
+const isNewView = computed(() => currentAdminView.value === "new");
 const tagOptions = computed(() => ["all", ...new Set(posts.value.map((post) => post.tag))]);
 const displayedPosts = computed(() => {
   const keyword = normalizeText(listKeyword.value);
@@ -244,6 +256,7 @@ async function loadPosts() {
   try {
     posts.value = await getAllEditablePosts();
     draftStatus.value = getLocalDraftStatus();
+    applyEditorFromRoute();
   } catch (err) {
     error.value = err instanceof Error ? err.message : "后台数据加载失败";
     if (isApiMode && error.value.includes("请先登录")) {
@@ -255,15 +268,46 @@ async function loadPosts() {
   }
 }
 
-async function editPost(post) {
-  editingSlug.value = post.slug;
-  assignForm(post);
-  error.value = "";
-}
-
 function newPost() {
   error.value = "";
   resetForm();
+}
+
+function readQueryText(value) {
+  if (Array.isArray(value)) return String(value[0] || "").trim();
+  return String(value || "").trim();
+}
+
+function applyEditorFromRoute() {
+  if (!isNewView.value) return;
+
+  const editSlug = readQueryText(route.query.edit);
+  if (!editSlug) return;
+
+  const matched = posts.value.find((post) => post.slug === editSlug);
+  if (matched) {
+    editingSlug.value = matched.slug;
+    assignForm(matched);
+    error.value = "";
+    return;
+  }
+
+  if (!loading.value) {
+    error.value = `未找到 slug 为 ${editSlug} 的文章。`;
+  }
+}
+
+function goAdminList() {
+  router.push({ name: "admin-list" });
+}
+
+function goAdminNew() {
+  newPost();
+  router.push({ name: "admin-new" });
+}
+
+function goAdminEdit(post) {
+  router.push({ name: "admin-new", query: { edit: post.slug } });
 }
 
 function ensureUniqueSlug() {
@@ -399,7 +443,11 @@ async function submitLogin() {
     authForm.password = "";
     await loadPosts();
     await refreshOperationLog();
-    resetForm();
+    if (isNewView.value && readQueryText(route.query.edit)) {
+      applyEditorFromRoute();
+    } else {
+      resetForm();
+    }
     showToast("登录成功。");
     addOperation("登录", username || "-", "登录后台");
   } catch (err) {
@@ -424,17 +472,32 @@ async function handleLogout() {
   }
 }
 
-usePageMeta({
-  title: "Nebula Notes | 内容管理",
-  description: "内容运营后台：新增、编辑、删除文章并执行发布前质量检查。"
-});
+usePageMeta(() => ({
+  title: currentAdminView.value === "hub" ? "Tom的个人博客 | 后台入口" : "Tom的个人博客 | 内容管理",
+  description:
+    currentAdminView.value === "hub"
+      ? "后台入口：通过栏目跳转到文章列表管理页或新建文章页。"
+      : "内容运营后台：新增、编辑、删除文章并执行发布前质量检查。"
+}));
+
+watch(
+  () => route.fullPath,
+  () => {
+    applyEditorFromRoute();
+  },
+  { immediate: true }
+);
 
 onMounted(async () => {
   restoreOperationLog();
   await checkSessionStatus();
   await loadPosts();
   await refreshOperationLog();
-  resetForm();
+  if (isNewView.value && !readQueryText(route.query.edit)) {
+    resetForm();
+  } else {
+    applyEditorFromRoute();
+  }
 });
 
 onBeforeUnmount(() => {
@@ -447,7 +510,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="hero mini-hero">
     <p class="kicker">CONTENT ADMIN</p>
-    <h1>内容运营后台</h1>
+    <h1>{{ isHubView ? "后台入口" : "内容运营后台" }}</h1>
     <p class="hero-desc">
       <span v-if="isApiMode">当前内容发布到服务器，保存后对访客可见。</span>
       <span v-else>
@@ -455,15 +518,26 @@ onBeforeUnmount(() => {
         本地改动：新增/修改 {{ draftStatus.upsertCount }} 篇，删除 {{ draftStatus.deletedCount }} 篇。
       </span>
     </p>
-    <div class="hero-actions">
+    <div v-if="!isHubView" class="hero-actions">
+      <RouterLink class="btn ghost" :to="{ name: 'admin' }">返回后台入口</RouterLink>
       <button
+        v-if="isListView"
         class="btn primary"
         type="button"
         data-testid="admin-new-post"
         :disabled="isApiMode && !loggedIn"
-        @click="newPost"
+        @click="goAdminNew"
       >
         新建文章
+      </button>
+      <button
+        v-if="isNewView"
+        class="btn ghost"
+        type="button"
+        :disabled="isApiMode && !loggedIn"
+        @click="goAdminList"
+      >
+        前往文章列表
       </button>
       <button
         v-if="!isApiMode"
@@ -518,7 +592,28 @@ onBeforeUnmount(() => {
   </section>
 
   <template v-else>
-    <section class="admin-layout">
+    <section v-if="isHubView" class="admin-entry-grid">
+      <article class="admin-panel admin-entry-card">
+        <div class="admin-entry-main">
+          <h2>文章列表</h2>
+          <p>进入后可筛选、编辑、删除已有文章。</p>
+        </div>
+        <RouterLink class="admin-entry-link" :to="{ name: 'admin-list' }" aria-label="进入文章列表管理">
+          →
+        </RouterLink>
+      </article>
+      <article class="admin-panel admin-entry-card">
+        <div class="admin-entry-main">
+          <h2>新建文章</h2>
+          <p>进入后可创建文章，填写内容并执行发布检查。</p>
+        </div>
+        <RouterLink class="admin-entry-link" :to="{ name: 'admin-new' }" aria-label="进入新建文章页面">
+          →
+        </RouterLink>
+      </article>
+    </section>
+
+    <section v-if="isListView" class="admin-layout-single">
       <article class="admin-panel">
         <h2>文章列表</h2>
 
@@ -553,14 +648,16 @@ onBeforeUnmount(() => {
               <span>{{ post.date }} · {{ post.tag }} · {{ post.slug }}</span>
             </div>
             <div class="admin-actions">
-              <button class="tag" type="button" @click="editPost(post)">编辑</button>
+              <button class="tag" type="button" @click="goAdminEdit(post)">编辑</button>
               <button class="tag danger" type="button" @click="removePost(post.slug)">删除</button>
             </div>
           </li>
         </ul>
         <p v-else class="empty">当前筛选条件下没有文章。</p>
       </article>
+    </section>
 
+    <section v-if="isNewView" class="admin-layout-single">
       <article class="admin-panel">
         <h2>{{ isEditing ? `编辑：${editingSlug}` : "新建文章" }}</h2>
         <form class="admin-form" @submit.prevent="submitForm">
@@ -647,7 +744,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section class="admin-log-panel">
+    <section v-if="!isHubView" class="admin-log-panel">
       <h2>最近操作</h2>
       <p v-if="!operationLog.length" class="empty">暂无操作记录。</p>
       <ul v-else>
