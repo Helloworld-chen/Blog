@@ -546,7 +546,7 @@ async function exitFromHub() {
   }
 
   // 本地模式没有真实登录态，直接返回首页。
-  router.push("/");
+  router.push({ path: "/", state: { fromAdmin: true } });
 }
 
 usePageMeta(() => ({

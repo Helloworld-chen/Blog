@@ -7,21 +7,29 @@ import { getAllPosts } from "./services/postService.js";
 const route = useRoute();
 const router = useRouter();
 const mobileNavOpen = ref(false);
-const showAdminLink = import.meta.env.VITE_SHOW_ADMIN_LINK === "true";
 const isHomeRoute = computed(() => route.path === "/");
 const isAdminRoute = computed(() => route.path.startsWith("/admin"));
 const showBackButton = computed(() => !isHomeRoute.value && !isAdminRoute.value);
 const activeHomePanel = ref("");
 const homePosts = ref([]);
-const showHomeAdminShortcut = ref(false);
+const showAdminReturnShortcut = ref(false);
+const desktopNavOpen = ref(false);
+const desktopNavWrap = ref(null);
+let docPointerDownHandler;
+let docKeyDownHandler;
 
 const homeNavTarget = computed(() => {
-  if (isAdminRoute.value) {
+  if (isAdminRoute.value || showAdminReturnShortcut.value) {
     // Mark this specific home visit as "from admin" so the home topbar can show a temporary "管理" shortcut.
     return { path: "/", state: { fromAdmin: true } };
   }
   return "/";
 });
+
+function publicNavTarget(path) {
+  if (isAdminRoute.value || showAdminReturnShortcut.value) return { path, state: { fromAdmin: true } };
+  return path;
+}
 
 function readSingleParam(value) {
   if (Array.isArray(value)) return String(value[0] || "");
@@ -84,6 +92,14 @@ function closeHomePanel() {
   activeHomePanel.value = "";
 }
 
+function closeDesktopNav() {
+  desktopNavOpen.value = false;
+}
+
+function toggleDesktopNav() {
+  desktopNavOpen.value = !desktopNavOpen.value;
+}
+
 function toggleHomePanel(panel) {
   if (activeHomePanel.value === panel) {
     closeHomePanel();
@@ -102,42 +118,65 @@ function goBack() {
   router.push("/");
 }
 
-function syncHomeAdminShortcut() {
+function syncAdminReturnShortcut() {
   if (typeof window === "undefined") return;
-  if (!isHomeRoute.value) {
-    showHomeAdminShortcut.value = false;
+  if (isAdminRoute.value) {
+    showAdminReturnShortcut.value = false;
     return;
   }
 
   // Vue Router stores navigation state on `history.state` for the current entry.
-  // Direct visits won't have `fromAdmin`, only admin -> home via nav will.
+  // Direct visits won't have `fromAdmin`, only admin -> public via in-app nav will.
   const state = window.history?.state || {};
-  showHomeAdminShortcut.value = Boolean(state && state.fromAdmin);
+  showAdminReturnShortcut.value = Boolean(state && state.fromAdmin);
 }
 
 function goAdminHubFromShortcut() {
   router.push({ name: "admin" });
 }
 
+function goAdminHubFromHeader() {
+  closeHomePanel();
+  closeDesktopNav();
+  goAdminHubFromShortcut();
+}
+
 watch(
   () => route.path,
   (path) => {
     closeHomePanel();
+    closeDesktopNav();
     if (path === "/") {
       loadHomePanelData();
     }
-    syncHomeAdminShortcut();
+    syncAdminReturnShortcut();
   },
   { immediate: true }
 );
 
 onMounted(() => {
   window.addEventListener(POSTS_UPDATED_EVENT, loadHomePanelData);
-  syncHomeAdminShortcut();
+  syncAdminReturnShortcut();
+
+  docPointerDownHandler = (event) => {
+    if (!desktopNavOpen.value) return;
+    const wrap = desktopNavWrap.value;
+    if (!wrap) return;
+    if (wrap.contains(event.target)) return;
+    closeDesktopNav();
+  };
+  docKeyDownHandler = (event) => {
+    if (event.key !== "Escape") return;
+    if (desktopNavOpen.value) closeDesktopNav();
+  };
+  document.addEventListener("pointerdown", docPointerDownHandler);
+  document.addEventListener("keydown", docKeyDownHandler);
 });
 
 onUnmounted(() => {
   window.removeEventListener(POSTS_UPDATED_EVENT, loadHomePanelData);
+  if (docPointerDownHandler) document.removeEventListener("pointerdown", docPointerDownHandler);
+  if (docKeyDownHandler) document.removeEventListener("keydown", docKeyDownHandler);
 });
 </script>
 
@@ -147,7 +186,7 @@ onUnmounted(() => {
 
   <header class="site-header">
     <div class="brand">Tom的个人博客</div>
-    <div v-if="isHomeRoute" class="home-topbar" :class="{ 'has-admin': showHomeAdminShortcut }">
+    <div v-if="isHomeRoute" class="home-topbar" :class="{ 'has-admin': showAdminReturnShortcut }">
       <button
         class="topbar-btn"
         type="button"
@@ -169,6 +208,15 @@ onUnmounted(() => {
         文章标签
       </button>
       <button
+        v-if="showAdminReturnShortcut"
+        class="topbar-btn"
+        type="button"
+        aria-label="返回管理后台"
+        @click="goAdminHubFromShortcut"
+      >
+        管理
+      </button>
+      <button
         class="topbar-btn"
         type="button"
         :class="{ 'is-active': activeHomePanel === 'menu' }"
@@ -177,15 +225,6 @@ onUnmounted(() => {
         @click="toggleHomePanel('menu')"
       >
         导航
-      </button>
-      <button
-        v-if="showHomeAdminShortcut"
-        class="topbar-btn"
-        type="button"
-        aria-label="返回管理后台"
-        @click="goAdminHubFromShortcut"
-      >
-        管理
       </button>
     </div>
     <div class="header-actions" :class="{ 'with-back': showBackButton }">
@@ -204,10 +243,52 @@ onUnmounted(() => {
         导航
       </button>
       <nav id="siteNav" class="site-nav" :class="{ open: mobileNavOpen }">
-        <RouterLink :to="homeNavTarget" @click="closeHomePanel">首页</RouterLink>
-        <RouterLink to="/posts" @click="closeHomePanel">文章库</RouterLink>
-        <RouterLink to="/about" @click="closeHomePanel">关于</RouterLink>
-        <RouterLink v-if="showAdminLink" to="/admin" @click="closeHomePanel">管理</RouterLink>
+        <div class="site-nav-desktop">
+          <RouterLink :to="homeNavTarget" @click="closeHomePanel">首页</RouterLink>
+          <button
+            v-if="showAdminReturnShortcut"
+            class="nav-link-btn"
+            type="button"
+            aria-label="返回管理后台"
+            @click="goAdminHubFromHeader"
+          >
+            管理
+          </button>
+          <div
+            ref="desktopNavWrap"
+            class="nav-dropdown"
+            :class="{ open: desktopNavOpen }"
+          >
+            <button
+              class="nav-link-btn nav-dropdown-toggle"
+              type="button"
+              aria-haspopup="menu"
+              :aria-expanded="desktopNavOpen ? 'true' : 'false'"
+              aria-controls="desktopNavMenu"
+              @click="toggleDesktopNav"
+            >
+              导航
+            </button>
+            <div
+              id="desktopNavMenu"
+              class="nav-dropdown-menu"
+              role="menu"
+              :aria-hidden="desktopNavOpen ? 'false' : 'true'"
+            >
+              <RouterLink :to="publicNavTarget('/posts')" role="menuitem" @click="closeDesktopNav">
+                文章库
+              </RouterLink>
+              <RouterLink :to="publicNavTarget('/about')" role="menuitem" @click="closeDesktopNav">
+                关于
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+        <div class="site-nav-mobile" aria-label="站点导航">
+          <RouterLink :to="homeNavTarget" @click="closeHomePanel">首页</RouterLink>
+          <RouterLink :to="publicNavTarget('/posts')" @click="closeHomePanel">文章库</RouterLink>
+          <RouterLink :to="publicNavTarget('/about')" @click="closeHomePanel">关于</RouterLink>
+        </div>
       </nav>
     </div>
     <section
