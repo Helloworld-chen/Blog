@@ -4,6 +4,7 @@ coverage
 playwright-report
 test-results
 .vscode
+*.code-workspace
 deploy/.htpasswd
 .runtime
 .env
